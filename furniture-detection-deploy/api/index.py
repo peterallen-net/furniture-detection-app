@@ -1,23 +1,19 @@
 import os
+import sys
 import json
 import cv2
 import numpy as np
-from flask import Flask, request, render_template, jsonify, send_file, url_for
+from flask import Flask, request, render_template, jsonify
 from werkzeug.utils import secure_filename
 from collections import Counter
 from inference_sdk import InferenceHTTPClient
 import base64
 from io import BytesIO
 from PIL import Image
+import tempfile
 
-app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = 'uploads'
-app.config['OUTPUT_FOLDER'] = 'outputs'
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
-
-# Create directories if they don't exist
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-os.makedirs(app.config['OUTPUT_FOLDER'], exist_ok=True)
+app = Flask(__name__, template_folder='../templates')
+app.config['MAX_CONTENT_LENGTH'] = 4 * 1024 * 1024  # 4MB max for Vercel
 
 # Initialize Roboflow client
 client = InferenceHTTPClient(
@@ -115,12 +111,10 @@ def upload_file():
         if not allowed_file(file.filename):
             return jsonify({'error': 'Invalid file type. Please upload an image file.'}), 400
         
-        # Save uploaded file
-        filename = secure_filename(file.filename)
-        timestamp = str(int(np.random.random() * 1000000))
-        filename = f"{timestamp}_{filename}"
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        file.save(filepath)
+        # Use temporary files for serverless environment
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as temp_input:
+            file.save(temp_input.name)
+            filepath = temp_input.name
         
         # Run furniture detection
         result = client.run_workflow(
@@ -167,8 +161,8 @@ def upload_file():
             })
         
         # Create visualization
-        output_filename = f"output_{filename}"
-        output_path = os.path.join(app.config['OUTPUT_FOLDER'], output_filename)
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as temp_output:
+            output_path = temp_output.name
         
         if create_visualization(filepath, detections, output_path):
             # Convert output image to base64 for display
@@ -183,8 +177,9 @@ def upload_file():
                 'output_image': f"data:image/jpeg;base64,{img_data}"
             }
             
-            # Clean up uploaded file
-            os.remove(filepath)
+            # Clean up temporary files
+            os.unlink(filepath)
+            os.unlink(output_path)
             
             return jsonify(response_data)
         else:
@@ -193,9 +188,6 @@ def upload_file():
     except Exception as e:
         return jsonify({'error': f'Processing failed: {str(e)}'}), 500
 
-# For Vercel serverless deployment
-def handler(request):
-    return app(request.environ, lambda *args: None)
-
-if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5002)
+# Vercel serverless handler
+def handler(event, context):
+    return app(event, context)

@@ -1,0 +1,17 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+.DS_Store
+node_modules/
+uploads/
+outputs/
+test_inventory.html
+living-room.jpg
+detection_results.json
+output_with_detections.jpg
+notebooks/
+docs/
+scripts/
+data/
+models/
