@@ -1,0 +1,92 @@
+{
+  "image_path": "living-room.jpg",
+  "total_objects": 7,
+  "object_counts": {
+    "Carpet": 1,
+    "Painting": 1,
+    "Armchair": 1,
+    "Floor-Lamp": 1,
+    "Side-Table": 1,
+    "Plants": 1,
+    "Sideboard-Credenza-Storage": 1
+  },
+  "detections": [
+    {
+      "width": 912.59765625,
+      "height": 216.30859375,
+      "x": 528.80859375,
+      "y": 769.53125,
+      "confidence": 0.9691264629364014,
+      "class_id": 11,
+      "class": "Carpet",
+      "detection_id": "242f2278-1175-401e-91ad-49f86eb5d39a",
+      "parent_id": "image"
+    },
+    {
+      "width": 185.6689453125,
+      "height": 257.32421875,
+      "x": 550.29296875,
+      "y": 278.80859375,
+      "confidence": 0.9688695669174194,
+      "class_id": 41,
+      "class": "Painting",
+      "detection_id": "b0689d50-3b2e-46de-8780-ba5062dd58c1",
+      "parent_id": "image"
+    },
+    {
+      "width": 283.935546875,
+      "height": 284.66796875,
+      "x": 503.41796875,
+      "y": 582.51953125,
+      "confidence": 0.9677236676216125,
+      "class_id": 2,
+      "class": "Armchair",
+      "detection_id": "bfe352e6-3db0-4197-b8cd-ce51dfa4bde6",
+      "parent_id": "image"
+    },
+    {
+      "width": 193.115234375,
+      "height": 528.80859375,
+      "x": 319.3359375,
+      "y": 448.73046875,
+      "confidence": 0.9603884816169739,
+      "class_id": 24,
+      "class": "Floor-Lamp",
+      "detection_id": "7a641a5e-25bc-4af4-9d16-211a8c1c3284",
+      "parent_id": "image"
+    },
+    {
+      "width": 107.421875,
+      "height": 140.9912109375,
+      "x": 685.546875,
+      "y": 582.03125,
+      "confidence": 0.9590870141983032,
+      "class_id": 47,
+      "class": "Side-Table",
+      "detection_id": "e17f0072-6632-401e-963b-480a40ed743a",
+      "parent_id": "image"
+    },
+    {
+      "width": 105.95703125,
+      "height": 214.35546875,
+      "x": 704.58984375,
+      "y": 414.55078125,
+      "confidence": 0.9580836296081543,
+      "class_id": 44,
+      "class": "Plants",
+      "detection_id": "f569e17b-0a5b-44fc-b77e-0e6be7c59b96",
+      "parent_id": "image"
+    },
+    {
+      "width": 224.365234375,
+      "height": 162.109375,
+      "x": 882.8125,
+      "y": 582.51953125,
+      "confidence": 0.9537354111671448,
+      "class_id": 48,
+      "class": "Sideboard-Credenza-Storage",
+      "detection_id": "ed55b711-d66f-4afd-ba0b-80052343625a",
+      "parent_id": "image"
+    }
+  ]
+}
