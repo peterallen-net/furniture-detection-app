@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Furniture Detection | AI-Powered Analysis</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            background: #fafafa;
+            min-height: 100vh;
+            color: #1f2937;
+            line-height: 1.6;
+            text-align: center;
+        }
+
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 0 16px;
+        }
+
+        @media (min-width: 768px) {
+            .container {
+                max-width: 768px;
+                padding: 0 24px;
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .container {
+                max-width: 1024px;
+                padding: 0 32px;
+            }
+        }
+
+        .header {
+            text-align: center;
+            padding: 32px 0 24px;
+            background: white;
+            margin-bottom: 24px;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 12px;
+            letter-spacing: -0.025em;
+        }
+
+        .header p {
+            font-size: 1rem;
+            color: #6b7280;
+            max-width: 100%;
+            margin: 0 auto;
+            font-weight: 400;
+            padding: 0 16px;
+        }
+
+        .upload-section {
+            background: white;
+            border-radius: 12px;
+            padding: 24px 16px;
+            margin-bottom: 24px;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+            border: 1px solid #e5e7eb;
+        }
+
+        @media (min-width: 768px) {
+            .header {
+                padding: 48px 0 32px;
+                margin-bottom: 32px;
+            }
+
+            .header h1 {
+                font-size: 2.5rem;
+                margin-bottom: 16px;
+            }
+
+            .header p {
+                font-size: 1.125rem;
+                max-width: 600px;
+                padding: 0;
+            }
+
+            .upload-section {
+                padding: 32px;
+                margin-bottom: 32px;
+                border-radius: 16px;
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .header {
+                padding: 60px 0 40px;
+                margin-bottom: 40px;
+            }
+
+            .header h1 {
+                font-size: 3rem;
+            }
+
+            .header p {
+                font-size: 1.25rem;
+            }
+
+            .upload-section {
+                padding: 48px;
+            }
+        }
+
+        .upload-area {
+            border: 2px dashed #d1d5db;
+            border-radius: 12px;
+            padding: 32px 16px;
+            margin-bottom: 24px;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            background: #f9fafb;
+            position: relative;
+        }
+
+        @media (min-width: 768px) {
+            .upload-area {
+                padding: 48px 24px;
+                margin-bottom: 32px;
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .upload-area {
+                padding: 64px 32px;
+            }
+        }
+
+        .upload-area:hover {
+            border-color: #6366f1;
+            background: #f8fafc;
+        }
+
+        .upload-area.dragover {
+            border-color: #6366f1;
+            background: #eef2ff;
+            transform: scale(1.01);
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            color: #9ca3af;
+            margin-bottom: 16px;
+        }
+
+        .upload-text {
+            font-size: 1.125rem;
+            color: #374151;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .upload-subtext {
+            font-size: 0.875rem;
+            color: #6b7280;
+            margin-top: 8px;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .upload-btn {
+            background: #6366f1;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        }
+
+        .upload-btn:hover {
+            background: #4f46e5;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 64px;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+            border: 1px solid #e5e7eb;
+        }
+
+        .spinner {
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #6366f1;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        .loading p {
+            color: #6b7280;
+            font-size: 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .results {
+            display: none;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .result-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px 16px;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+            border: 1px solid #e5e7eb;
+        }
+
+        @media (min-width: 768px) {
+            .results-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 24px;
+                margin-bottom: 32px;
+            }
+
+            .result-card {
+                padding: 24px;
+                border-radius: 16px;
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .results-grid {
+                gap: 32px;
+            }
+
+            .result-card {
+                padding: 32px;
+            }
+        }
+
+        .result-image {
+            text-align: center;
+        }
+
+        .result-image h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 24px;
+        }
+
+        .result-image img {
+            max-width: 100%;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .detection-summary h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 16px;
+        }
+
+        .total-count {
+            font-size: 1.125rem;
+            color: #374151;
+            margin-bottom: 24px;
+            padding: 16px;
+            background: #f9fafb;
+            border-radius: 8px;
+            border-left: 4px solid #6366f1;
+        }
+
+        .object-count {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #f3f4f6;
+        }
+
+        .object-count:last-child {
+            border-bottom: none;
+        }
+
+        .object-name {
+            font-weight: 500;
+            color: #374151;
+        }
+
+        .object-number {
+            background: #6366f1;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+
+        .detections-list {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+            border: 1px solid #e5e7eb;
+            margin-bottom: 32px;
+        }
+
+        .detections-header {
+            background: #6366f1;
+            color: white;
+            padding: 20px 16px;
+            border-radius: 12px 12px 0 0;
+            font-size: 1.125rem;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        @media (min-width: 768px) {
+            .detections-header {
+                padding: 24px 24px;
+                border-radius: 16px 16px 0 0;
+                font-size: 1.25rem;
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .detections-header {
+                padding: 24px 32px;
+            }
+        }
+
+        .detection-item {
+            padding: 24px 32px;
+            border-bottom: 1px solid #f3f4f6;
+            transition: background 0.2s ease;
+        }
+
+        .detection-item:hover {
+            background: #f9fafb;
+        }
+
+        .detection-item:last-child {
+            border-bottom: none;
+            border-radius: 0 0 16px 16px;
+        }
+
+        .detection-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .detection-class {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #111827;
+        }
+
+        .detection-confidence {
+            background: #10b981;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .detection-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .detail-group {
+            background: #f9fafb;
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px solid #f3f4f6;
+        }
+
+        .detail-label {
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 4px;
+            font-size: 0.875rem;
+        }
+
+        .detail-value {
+            color: #6b7280;
+            font-size: 0.875rem;
+        }
+
+        .comments-section {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #f3f4f6;
+        }
+
+        .comments-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            color: #374151;
+            background: white;
+            transition: border-color 0.2s ease;
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .comments-input:focus {
+            outline: none;
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        .comments-input::placeholder {
+            color: #9ca3af;
+        }
+
+        .error {
+            display: none;
+            background: #fef2f2;
+            color: #991b1b;
+            padding: 16px 24px;
+            margin-bottom: 32px;
+            border-radius: 12px;
+            border: 1px solid #fecaca;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        }
+
+        .new-upload-btn {
+            background: #6366f1;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        }
+
+        .new-upload-btn:hover {
+            background: #4f46e5;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .upload-another {
+            text-align: center;
+            padding: 32px;
+        }
+
+        /* Inventory List Styles */
+        .inventory-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            border-bottom: 1px solid #f3f4f6;
+            transition: background 0.2s ease;
+        }
+
+        @media (min-width: 768px) {
+            .inventory-item {
+                padding: 16px 24px;
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .inventory-item {
+                padding: 16px 32px;
+            }
+        }
+
+        .inventory-item:hover {
+            background: #f9fafb;
+        }
+
+        .inventory-item:last-child {
+            border-bottom: none;
+            border-radius: 0 0 16px 16px;
+        }
+
+        .inventory-checkbox {
+            width: 20px;
+            height: 20px;
+            margin-right: 16px;
+            accent-color: #10b981;
+            cursor: pointer;
+        }
+
+        .inventory-content {
+            flex: 1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .inventory-details {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .inventory-name {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #111827;
+            margin-bottom: 4px;
+        }
+
+        .inventory-meta {
+            font-size: 0.875rem;
+            color: #6b7280;
+            display: flex;
+            gap: 16px;
+        }
+
+        .inventory-confidence {
+            background: #10b981;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .inventory-quantity {
+            background: #6366f1;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.875rem;
+            min-width: 40px;
+            text-align: center;
+        }
+
+        .inventory-notes {
+            margin-top: 8px;
+            padding: 8px 12px;
+            background: #f9fafb;
+            border-radius: 6px;
+            border: 1px solid #e5e7eb;
+            font-size: 0.875rem;
+            color: #6b7280;
+            display: none;
+        }
+
+        .inventory-item.has-notes .inventory-notes {
+            display: block;
+        }
+
+        @media (max-width: 768px) {
+            .results-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .detection-details {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Furniture Detection</h1>
+            <p>Upload an image to detect and analyse furniture using AI</p>
+        </div>
+
+        <div class="upload-section" id="uploadSection">
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📷</div>
+                <div class="upload-text">
+                    <strong>Click to upload</strong> or drag and drop your image here
+                </div>
+                <div style="color: #999; font-size: 0.9em; margin-top: 10px;">
+                    Supports: JPG, PNG, GIF, BMP (Max 16MB)
+                </div>
+            </div>
+            <input type="file" id="fileInput" class="file-input" accept="image/*">
+            <button class="upload-btn" id="uploadBtn">Choose Image</button>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Analyzing your image... This may take a few moments.</p>
+        </div>
+
+        <div class="error" id="error">
+            <strong>Error:</strong> <span id="errorMessage"></span>
+        </div>
+
+        <div class="results" id="results">
+            <div class="results-grid">
+                <div class="result-card result-image">
+                    <h3>Detection Results</h3>
+                    <img id="resultImage" alt="Detection Results">
+                </div>
+                
+                <div class="result-card detection-summary">
+                    <h3>📊 Summary</h3>
+                    <div class="total-count">
+                        Total Objects: <strong id="totalObjects">0</strong>
+                    </div>
+                    <div id="objectCounts"></div>
+                </div>
+            </div>
+
+            <div class="detections-list">
+                <div class="detections-header">
+                    📋 Furniture Inventory List
+                </div>
+                <div id="inventoryList"></div>
+            </div>
+
+            <div class="upload-another">
+                <button class="new-upload-btn" onclick="resetApp()">Upload Another Image</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const uploadSection = document.getElementById('uploadSection');
+        const loading = document.getElementById('loading');
+        const results = document.getElementById('results');
+        const error = document.getElementById('error');
+
+        // File upload handlers
+        uploadBtn.addEventListener('click', () => fileInput.click());
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        // Drag and drop handlers
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        function handleFile(file) {
+            // Validate file type
+            const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/bmp'];
+            if (!allowedTypes.includes(file.type)) {
+                showError('Please upload a valid image file (JPG, PNG, GIF, BMP)');
+                return;
+            }
+
+            // Validate file size (16MB)
+            if (file.size > 16 * 1024 * 1024) {
+                showError('File size must be less than 16MB');
+                return;
+            }
+
+            uploadImage(file);
+        }
+
+        function uploadImage(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            // Show loading state
+            uploadSection.style.display = 'none';
+            loading.style.display = 'block';
+            error.style.display = 'none';
+            results.style.display = 'none';
+
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                loading.style.display = 'none';
+                
+                if (data.success) {
+                    displayResults(data);
+                } else {
+                    showError(data.error || 'An error occurred while processing the image');
+                }
+            })
+            .catch(err => {
+                loading.style.display = 'none';
+                showError('Network error: ' + err.message);
+            });
+        }
+
+        function displayResults(data) {
+            // Display the result image
+            document.getElementById('resultImage').src = data.output_image;
+            
+            // Display total objects
+            document.getElementById('totalObjects').textContent = data.total_objects;
+            
+            // Display object counts
+            const objectCountsDiv = document.getElementById('objectCounts');
+            objectCountsDiv.innerHTML = '';
+            
+            for (const [objectName, count] of Object.entries(data.object_counts)) {
+                const countDiv = document.createElement('div');
+                countDiv.className = 'object-count';
+                countDiv.innerHTML = `
+                    <span class="object-name">${objectName}</span>
+                    <span class="object-number">${count}</span>
+                `;
+                objectCountsDiv.appendChild(countDiv);
+            }
+            
+            // Display inventory list
+            const inventoryListDiv = document.getElementById('inventoryList');
+            inventoryListDiv.innerHTML = '';
+            
+            // Group detections by class and create inventory items
+            const inventoryItems = {};
+            data.detections.forEach((detection, index) => {
+                const className = detection.class;
+                if (!inventoryItems[className]) {
+                    inventoryItems[className] = {
+                        name: className,
+                        quantity: 0,
+                        confidence: detection.confidence,
+                        items: []
+                    };
+                }
+                inventoryItems[className].quantity += 1;
+                inventoryItems[className].items.push(detection);
+            });
+            
+            // Create inventory list items
+            Object.values(inventoryItems).forEach((item, index) => {
+                const inventoryDiv = document.createElement('div');
+                inventoryDiv.className = 'inventory-item';
+                
+                // Generate item description based on quantity
+                const itemDescription = item.quantity > 1 ? 
+                    `${item.quantity} items detected` : 
+                    `1 item detected`;
+                
+                inventoryDiv.innerHTML = `
+                    <input type="checkbox" class="inventory-checkbox" checked>
+                    <div class="inventory-content">
+                        <div class="inventory-details">
+                            <div class="inventory-name">${item.name}</div>
+                            <div class="inventory-meta">
+                                <span>${itemDescription}</span>
+                                <span class="inventory-confidence">${item.confidence}</span>
+                            </div>
+                        </div>
+                        <div class="inventory-quantity">${item.quantity}</div>
+                    </div>
+                `;
+                inventoryListDiv.appendChild(inventoryDiv);
+            });
+            
+            results.style.display = 'block';
+        }
+
+        function showError(message) {
+            document.getElementById('errorMessage').textContent = message;
+            error.style.display = 'block';
+            uploadSection.style.display = 'block';
+        }
+
+        function resetApp() {
+            uploadSection.style.display = 'block';
+            loading.style.display = 'none';
+            results.style.display = 'none';
+            error.style.display = 'none';
+            fileInput.value = '';
+        }
+    </script>
+</body>
+</html>
