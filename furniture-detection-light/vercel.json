@@ -1,0 +1,26 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "api/index-light.py",
+      "use": "@vercel/python",
+      "config": {
+        "maxLambdaSize": "10mb"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/",
+      "dest": "api/index-light.py"
+    },
+    {
+      "src": "/upload",
+      "dest": "api/index-light.py"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "api/index-light.py"
+    }
+  ]
+}
