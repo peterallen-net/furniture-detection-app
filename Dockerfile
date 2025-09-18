@@ -34,8 +34,5 @@ EXPOSE 8080
 ENV FLASK_APP=app.py
 ENV PORT=8080
 
-# Update app.py to use PORT environment variable
-RUN sed -i "s/port=5002/port=int(os.environ.get('PORT', 8080))/" app.py
-
 # Run the application
 CMD ["python", "app.py"]
