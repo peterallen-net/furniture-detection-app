@@ -2,35 +2,41 @@ import os
 import json
 import cv2
 import numpy as np
-from flask import Flask, request, render_template, jsonify, send_file, url_for
+from flask import Flask, request, render_template, jsonify
 from werkzeug.utils import secure_filename
 from collections import Counter
 from inference_sdk import InferenceHTTPClient
 import base64
 from io import BytesIO
 from PIL import Image
+import requests
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = 'uploads'
-app.config['OUTPUT_FOLDER'] = 'outputs'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 
-# Create directories if they don't exist (with proper error handling for Cloud Run)
-try:
-    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-    os.makedirs(app.config['OUTPUT_FOLDER'], exist_ok=True)
-except PermissionError:
-    # In Cloud Run, use /tmp for temporary files
-    app.config['UPLOAD_FOLDER'] = '/tmp/uploads'
-    app.config['OUTPUT_FOLDER'] = '/tmp/outputs'
-    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-    os.makedirs(app.config['OUTPUT_FOLDER'], exist_ok=True)
+# Use /tmp for Cloud Run
+app.config['UPLOAD_FOLDER'] = '/tmp/uploads'
+app.config['OUTPUT_FOLDER'] = '/tmp/outputs'
 
-# Initialize Roboflow client
-client = InferenceHTTPClient(
-    api_url="https://serverless.roboflow.com",
-    api_key=os.getenv("ROBOFLOW_API_KEY", "OCYzLwdUcqDtypAh0OYT")
-)
+# Create directories
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+os.makedirs(app.config['OUTPUT_FOLDER'], exist_ok=True)
+
+# Initialize Roboflow client with error handling
+try:
+    client = InferenceHTTPClient(
+        api_url="https://serverless.roboflow.com",
+        api_key=os.getenv("ROBOFLOW_API_KEY", "OCYzLwdUcqDtypAh0OYT")
+    )
+    logger.info("Roboflow client initialized successfully")
+except Exception as e:
+    logger.error(f"Failed to initialize Roboflow client: {e}")
+    client = None
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'bmp'}
 
@@ -43,6 +49,7 @@ def create_visualization(image_path, detections, output_path):
         # Load image
         image = cv2.imread(image_path)
         if image is None:
+            logger.error(f"Failed to load image: {image_path}")
             return False
         
         # Define colors for different classes (BGR format for OpenCV)
@@ -99,19 +106,31 @@ def create_visualization(image_path, detections, output_path):
         
         # Save the visualization
         cv2.imwrite(output_path, image)
+        logger.info(f"Visualization saved to: {output_path}")
         return True
         
     except Exception as e:
-        print(f"Error creating visualization: {str(e)}")
+        logger.error(f"Error creating visualization: {str(e)}")
         return False
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
+@app.route('/health')
+def health():
+    return jsonify({
+        'status': 'healthy', 
+        'port': os.environ.get('PORT', 8080),
+        'roboflow_client': 'initialized' if client else 'failed'
+    })
+
 @app.route('/upload', methods=['POST'])
 def upload_file():
     try:
+        if not client:
+            return jsonify({'error': 'Roboflow client not initialized'}), 500
+            
         if 'file' not in request.files:
             return jsonify({'error': 'No file uploaded'}), 400
         
@@ -124,32 +143,61 @@ def upload_file():
         
         # Save uploaded file
         filename = secure_filename(file.filename)
-        timestamp = str(int(np.random.random() * 1000000))
+        timestamp = str(int(os.urandom(4).hex(), 16))
         filename = f"{timestamp}_{filename}"
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(filepath)
+        logger.info(f"File saved: {filepath}")
         
-        # Run furniture detection
-        result = client.run_workflow(
-            workspace_name="petes-workspace-oetpj",
-            workflow_id="detect-count-and-visualise-furniture-instant",
-            images={
-                "image": filepath
-            },
-            use_cache=True
-        )
+        # Run furniture detection using Roboflow API
+        logger.info("Running Roboflow detection...")
+        try:
+            # Try the workflow first
+            result = client.run_workflow(
+                workspace_name="petes-workspace-oetpj",
+                workflow_id="detect-count-and-visualise-furniture-instant",
+                images={
+                    "image": filepath
+                },
+                use_cache=True
+            )
+            logger.info("Roboflow workflow detection completed")
+        except Exception as workflow_error:
+            logger.warning(f"Workflow failed: {workflow_error}, trying COCO model...")
+            # Fallback to COCO model
+            result = client.infer(filepath, model_id="coco/3")
+            logger.info("COCO model detection completed")
         
         # Extract detections
         detections = []
         if isinstance(result, list) and len(result) > 0:
+            # Workflow response format
             first_result = result[0]
             if 'predictions' in first_result and 'predictions' in first_result['predictions']:
                 detections = first_result['predictions']['predictions']
             elif 'detections' in first_result:
                 detections = first_result['detections']
+        elif 'predictions' in result:
+            # Direct inference response format
+            detections = result['predictions']
+        elif 'detections' in result:
+            detections = result['detections']
         
         if not detections:
-            return jsonify({'error': 'No furniture detected in the image'}), 400
+            # Return original image if no furniture detected
+            with open(filepath, 'rb') as img_file:
+                img_data = base64.b64encode(img_file.read()).decode('utf-8')
+            
+            os.remove(filepath)
+            
+            return jsonify({
+                'success': True,
+                'message': 'No furniture detected in the image.',
+                'total_objects': 0,
+                'object_counts': {},
+                'detections': [],
+                'output_image': f"data:image/jpeg;base64,{img_data}"
+            })
         
         # Count objects by class
         object_counts = Counter()
@@ -190,20 +238,35 @@ def upload_file():
                 'output_image': f"data:image/jpeg;base64,{img_data}"
             }
             
-            # Clean up uploaded file
+            # Clean up files
             os.remove(filepath)
+            os.remove(output_path)
             
             return jsonify(response_data)
         else:
-            return jsonify({'error': 'Failed to create visualization'}), 500
+            # If visualization fails, return original image
+            with open(filepath, 'rb') as img_file:
+                img_data = base64.b64encode(img_file.read()).decode('utf-8')
+            
+            os.remove(filepath)
+            
+            return jsonify({
+                'success': True,
+                'message': 'Detection successful but visualization failed.',
+                'total_objects': len(detections),
+                'object_counts': dict(object_counts.most_common()),
+                'detections': detection_list,
+                'output_image': f"data:image/jpeg;base64,{img_data}"
+            })
             
     except Exception as e:
+        logger.error(f"Upload processing failed: {str(e)}")
+        # Clean up file if it exists
+        if 'filepath' in locals() and os.path.exists(filepath):
+            os.remove(filepath)
         return jsonify({'error': f'Processing failed: {str(e)}'}), 500
-
-# For Vercel serverless deployment
-def handler(request):
-    return app(request.environ, lambda *args: None)
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))
+    logger.info(f"Starting server on port {port}")
     app.run(debug=False, host='0.0.0.0', port=port)

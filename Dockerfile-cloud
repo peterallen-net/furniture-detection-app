@@ -1,0 +1,39 @@
+# Use Python 3.9 slim image for smaller size and faster startup
+FROM python:3.9-slim
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies for OpenCV
+RUN apt-get update && apt-get install -y \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    libgomp1 \
+    libgtk-3-0 \
+    libgl1-mesa-dev \
+    libglu1-mesa-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements first for better caching
+COPY requirements-cloud.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements-cloud.txt
+
+# Copy application files
+COPY app-cloud.py app.py
+COPY templates/ templates/
+
+# Create necessary directories
+RUN mkdir -p /tmp/uploads /tmp/outputs
+
+# Expose port 8080 for Cloud Run
+EXPOSE 8080
+
+# Set environment variable for port
+ENV PORT=8080
+
+# Use Gunicorn for production deployment
+CMD exec gunicorn --bind :$PORT --workers 1 --threads 8 --timeout 0 app:app

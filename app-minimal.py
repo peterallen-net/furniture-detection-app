@@ -2,29 +2,25 @@ import os
 import json
 import cv2
 import numpy as np
-from flask import Flask, request, render_template, jsonify, send_file, url_for
+from flask import Flask, request, render_template, jsonify
 from werkzeug.utils import secure_filename
 from collections import Counter
 from inference_sdk import InferenceHTTPClient
 import base64
 from io import BytesIO
 from PIL import Image
+import requests
 
 app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = 'uploads'
-app.config['OUTPUT_FOLDER'] = 'outputs'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 
-# Create directories if they don't exist (with proper error handling for Cloud Run)
-try:
-    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-    os.makedirs(app.config['OUTPUT_FOLDER'], exist_ok=True)
-except PermissionError:
-    # In Cloud Run, use /tmp for temporary files
-    app.config['UPLOAD_FOLDER'] = '/tmp/uploads'
-    app.config['OUTPUT_FOLDER'] = '/tmp/outputs'
-    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-    os.makedirs(app.config['OUTPUT_FOLDER'], exist_ok=True)
+# Use /tmp for Cloud Run
+app.config['UPLOAD_FOLDER'] = '/tmp/uploads'
+app.config['OUTPUT_FOLDER'] = '/tmp/outputs'
+
+# Create directories
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+os.makedirs(app.config['OUTPUT_FOLDER'], exist_ok=True)
 
 # Initialize Roboflow client
 client = InferenceHTTPClient(
@@ -109,6 +105,10 @@ def create_visualization(image_path, detections, output_path):
 def index():
     return render_template('index.html')
 
+@app.route('/health')
+def health():
+    return jsonify({'status': 'healthy', 'port': os.environ.get('PORT', 8080)})
+
 @app.route('/upload', methods=['POST'])
 def upload_file():
     try:
@@ -124,12 +124,12 @@ def upload_file():
         
         # Save uploaded file
         filename = secure_filename(file.filename)
-        timestamp = str(int(np.random.random() * 1000000))
+        timestamp = str(int(os.urandom(4).hex(), 16))
         filename = f"{timestamp}_{filename}"
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(filepath)
         
-        # Run furniture detection
+        # Run furniture detection using Roboflow API
         result = client.run_workflow(
             workspace_name="petes-workspace-oetpj",
             workflow_id="detect-count-and-visualise-furniture-instant",
@@ -149,7 +149,20 @@ def upload_file():
                 detections = first_result['detections']
         
         if not detections:
-            return jsonify({'error': 'No furniture detected in the image'}), 400
+            # Return original image if no furniture detected
+            with open(filepath, 'rb') as img_file:
+                img_data = base64.b64encode(img_file.read()).decode('utf-8')
+            
+            os.remove(filepath)
+            
+            return jsonify({
+                'success': True,
+                'message': 'No furniture detected in the image.',
+                'total_objects': 0,
+                'object_counts': {},
+                'detections': [],
+                'output_image': f"data:image/jpeg;base64,{img_data}"
+            })
         
         # Count objects by class
         object_counts = Counter()
@@ -190,20 +203,34 @@ def upload_file():
                 'output_image': f"data:image/jpeg;base64,{img_data}"
             }
             
-            # Clean up uploaded file
+            # Clean up files
             os.remove(filepath)
+            os.remove(output_path)
             
             return jsonify(response_data)
         else:
-            return jsonify({'error': 'Failed to create visualization'}), 500
+            # If visualization fails, return original image
+            with open(filepath, 'rb') as img_file:
+                img_data = base64.b64encode(img_file.read()).decode('utf-8')
+            
+            os.remove(filepath)
+            
+            return jsonify({
+                'success': True,
+                'message': 'Detection successful but visualization failed.',
+                'total_objects': len(detections),
+                'object_counts': dict(object_counts.most_common()),
+                'detections': detection_list,
+                'output_image': f"data:image/jpeg;base64,{img_data}"
+            })
             
     except Exception as e:
+        # Clean up file if it exists
+        if 'filepath' in locals() and os.path.exists(filepath):
+            os.remove(filepath)
         return jsonify({'error': f'Processing failed: {str(e)}'}), 500
-
-# For Vercel serverless deployment
-def handler(request):
-    return app(request.environ, lambda *args: None)
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))
+    print(f"Starting server on port {port}")
     app.run(debug=False, host='0.0.0.0', port=port)
