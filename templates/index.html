@@ -761,47 +761,28 @@
                 objectCountsDiv.appendChild(countDiv);
             }
             
-            // Display inventory list
+            // Display inventory list with simplified single-row format
             const inventoryListDiv = document.getElementById('inventoryList');
             inventoryListDiv.innerHTML = '';
             
-            // Group detections by class and create inventory items
-            const inventoryItems = {};
+            // Create simplified inventory items for each detection
             data.detections.forEach((detection, index) => {
-                const className = detection.class;
-                if (!inventoryItems[className]) {
-                    inventoryItems[className] = {
-                        name: className,
-                        quantity: 0,
-                        confidence: detection.confidence,
-                        items: []
-                    };
-                }
-                inventoryItems[className].quantity += 1;
-                inventoryItems[className].items.push(detection);
-            });
-            
-            // Create inventory list items
-            Object.values(inventoryItems).forEach((item, index) => {
                 const inventoryDiv = document.createElement('div');
                 inventoryDiv.className = 'inventory-item';
                 
-                // Generate item description based on quantity
-                const itemDescription = item.quantity > 1 ? 
-                    `${item.quantity} items detected` : 
-                    `1 item detected`;
+                // Format confidence as percentage
+                const confidencePercent = (detection.confidence * 100).toFixed(1);
                 
                 inventoryDiv.innerHTML = `
                     <input type="checkbox" class="inventory-checkbox" checked>
                     <div class="inventory-content">
                         <div class="inventory-details">
-                            <div class="inventory-name">${item.name}</div>
                             <div class="inventory-meta">
-                                <span>${itemDescription}</span>
-                                <span class="inventory-confidence">${item.confidence}</span>
+                                <span class="inventory-name">${detection.class}</span>
+                                <span class="inventory-confidence">${confidencePercent}%</span>
                             </div>
                         </div>
-                        <div class="inventory-quantity">${item.quantity}</div>
+                        <div class="inventory-quantity">1</div>
                     </div>
                 `;
                 inventoryListDiv.appendChild(inventoryDiv);

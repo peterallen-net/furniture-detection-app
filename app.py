@@ -160,17 +160,16 @@ def upload_file():
             confidence = detection.get('confidence', 0)
             object_counts[class_name] += 1
             
+            # Include all detection data for frontend processing
             detection_list.append({
                 'class': class_name,
-                'confidence': f"{confidence:.1%}",
-                'position': {
-                    'x': round(detection.get('x', 0), 1),
-                    'y': round(detection.get('y', 0), 1)
-                },
-                'size': {
-                    'width': round(detection.get('width', 0), 1),
-                    'height': round(detection.get('height', 0), 1)
-                }
+                'confidence': confidence,
+                'x': detection.get('x', 0),
+                'y': detection.get('y', 0),
+                'width': detection.get('width', 0),
+                'height': detection.get('height', 0),
+                'detection_id': detection.get('detection_id', ''),
+                'class_id': detection.get('class_id', 0)
             })
         
         # Create visualization
